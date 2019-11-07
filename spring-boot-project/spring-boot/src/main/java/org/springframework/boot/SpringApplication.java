@@ -219,6 +219,9 @@ public class SpringApplication {
 
 	private Class<? extends ConfigurableApplicationContext> applicationContextClass;
 
+	/**
+	 * 应用类型
+	 */
 	private WebApplicationType webApplicationType;
 
 	private boolean headless = true;
@@ -267,10 +270,19 @@ public class SpringApplication {
 	public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySources) {
 		this.resourceLoader = resourceLoader;
 		Assert.notNull(primarySources, "PrimarySources must not be null");
+
+		// 保存主启动器类
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
+		// 根据classpath下面的类信息判断应用类型
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+
+		// 根据MATF-INF下面的spring.factory获取所有的ApplicationContextInitializer然后进行实例化同时按照Order进行排序
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
+
+		// 根据MATF-INF下面的spring.factory获取所有的ApplicationListener然后进行实例化同时按照Order进行排序
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+
+		// 保存真正的main方法启动类，一般为jarLauncher或者为webLauncher
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -300,20 +312,39 @@ public class SpringApplication {
 		stopWatch.start();
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
+
+
 		configureHeadlessProperty();
+
+		// 获取自定义的SpringApplicationRunListeners的实现类，然后启动
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
+
+
 		try {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
+
 			configureIgnoreBeanInfo(environment);
+
 			Banner printedBanner = printBanner(environment);
+
+			// 构建ApplicationContext
 			context = createApplicationContext();
+
+
+			// 从spring.factory下面读取SpringBootExceptionReporter接口的实现类
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);
+
+
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
+
 			refreshContext(context);
+
 			afterRefresh(context, applicationArguments);
+
 			stopWatch.stop();
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
@@ -340,7 +371,11 @@ public class SpringApplication {
 			ApplicationArguments applicationArguments) {
 		// Create and configure the environment
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
+
+
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
+
+
 		ConfigurationPropertySources.attach(environment);
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
@@ -352,6 +387,10 @@ public class SpringApplication {
 		return environment;
 	}
 
+	/**
+	 * 根据应用类型获取对应的Environment
+	 * @return
+	 */
 	private Class<? extends StandardEnvironment> deduceEnvironmentClass() {
 		switch (this.webApplicationType) {
 		case SERVLET:
@@ -366,9 +405,15 @@ public class SpringApplication {
 	private void prepareContext(ConfigurableApplicationContext context, ConfigurableEnvironment environment,
 			SpringApplicationRunListeners listeners, ApplicationArguments applicationArguments, Banner printedBanner) {
 		context.setEnvironment(environment);
+
 		postProcessApplicationContext(context);
+
+
 		applyInitializers(context);
+
+
 		listeners.contextPrepared(context);
+
 		if (this.logStartupInfo) {
 			logStartupInfo(context.getParent() == null);
 			logStartupProfileInfo(context);
@@ -410,6 +455,11 @@ public class SpringApplication {
 				System.getProperty(SYSTEM_PROPERTY_JAVA_AWT_HEADLESS, Boolean.toString(this.headless)));
 	}
 
+	/**
+	 * 获取spring.factory下面配置的SpringApplicationRunListener实现类
+	 * @param args
+	 * @return
+	 */
 	private SpringApplicationRunListeners getRunListeners(String[] args) {
 		Class<?>[] types = new Class<?>[] { SpringApplication.class, String[].class };
 		return new SpringApplicationRunListeners(logger,
@@ -423,12 +473,25 @@ public class SpringApplication {
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
+		// 获取所有的SpringFactory的名称
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
+		// 根据SpringFactory的名称对所有的进行实例化
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
+		// 根据实例的Order注释进行排序
 		AnnotationAwareOrderComparator.sort(instances);
 		return instances;
 	}
 
+	/**
+	 * 根据名称构造所有的SpringFactory
+	 * @param type SpringFactory的父类
+	 * @param parameterTypes 实例构造器参数类型
+	 * @param classLoader 类加载器
+	 * @param args 构造器参数
+	 * @param names 所有的名称
+	 * @param <T> 返回的
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	private <T> List<T> createSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes,
 			ClassLoader classLoader, Object[] args, Set<String> names) {
@@ -448,6 +511,8 @@ public class SpringApplication {
 		return instances;
 	}
 
+
+	// 根据应用类型构造ConfigurableEnvironment
 	private ConfigurableEnvironment getOrCreateEnvironment() {
 		if (this.environment != null) {
 			return this.environment;
@@ -474,6 +539,8 @@ public class SpringApplication {
 	 * @see #configurePropertySources(ConfigurableEnvironment, String[])
 	 */
 	protected void configureEnvironment(ConfigurableEnvironment environment, String[] args) {
+
+		// 注册转换器
 		if (this.addConversionService) {
 			ConversionService conversionService = ApplicationConversionService.getSharedInstance();
 			environment.setConversionService((ConfigurableConversionService) conversionService);
@@ -544,6 +611,8 @@ public class SpringApplication {
 			throw new IllegalStateException("Cannot bind to SpringApplication", ex);
 		}
 	}
+
+
 
 	private Banner printBanner(ConfigurableEnvironment environment) {
 		if (this.bannerMode == Banner.Mode.OFF) {

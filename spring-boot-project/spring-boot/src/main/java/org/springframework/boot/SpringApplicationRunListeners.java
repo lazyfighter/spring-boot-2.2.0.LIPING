@@ -27,6 +27,13 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.ReflectionUtils;
 
 /**
+ *
+ * 我们可以实现这个接口来监听springboot的事件，然后做一些事情
+ *
+ * 如何注册
+ *
+ * 通过在spring.factory下面指定org.springframework.boot.SpringApplicationRunListener=\
+ *  com.lazyfighter.listener.HelloApplicationRunListener
  * A collection of {@link SpringApplicationRunListener}.
  *
  * @author Phillip Webb

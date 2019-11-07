@@ -47,6 +47,9 @@ import javax.tools.StandardLocation;
  * Annotation processor to store certain annotations from auto-configuration classes in a
  * property file.
  *
+ * 编译期Annotation解析执行器，用于生成文件META-INF/spring-autoconfigure-metadata.properties
+ * 根据指定SupportedAnnotationTypes，扫描所有注解的类，然后生成文件，后续用于加载
+ *
  * @author Madhura Bhave
  * @author Phillip Webb
  * @since 1.5.0
